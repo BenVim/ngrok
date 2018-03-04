@@ -28,7 +28,7 @@ var (
 )
 
 func NewProxy(pxyConn conn.Conn, regPxy *msg.RegProxy) {
-	// fail gracefully if the proxy connection fails to register
+	// fail gracefully if the proxy connection fails to register 如果代理连接失败，则可以优雅地失败。
 	defer func() {
 		if r := recover(); r != nil {
 			pxyConn.Warn("Failed with error: %v", r)
@@ -36,10 +36,10 @@ func NewProxy(pxyConn conn.Conn, regPxy *msg.RegProxy) {
 		}
 	}()
 
-	// set logging prefix
+	// set logging prefix 设置日志前缀
 	pxyConn.SetType("pxy")
 
-	// look up the control connection for this proxy
+	// look up the control connection for this proxy 查看这个代理的控制连接
 	pxyConn.Info("Registering new proxy for %s", regPxy.ClientId)
 	ctl := controlRegistry.Get(regPxy.ClientId)
 
@@ -50,11 +50,12 @@ func NewProxy(pxyConn conn.Conn, regPxy *msg.RegProxy) {
 	ctl.RegisterProxy(pxyConn)
 }
 
-// Listen for incoming control and proxy connections
-// We listen for incoming control and proxy connections on the same port
+// Listen for incoming control and proxy connections 监听传入控制和连接代理
+// We listen for incoming control and proxy connections on the same port 我们监听在同一个端口上的传入控件和代理连接为了方便布署
 // for ease of deployment. The hope is that by running on port 443, using
 // TLS and running all connections over the same port, we can bust through
 // restrictive firewalls.
+// 希望通过在端口443上运行。TLS和运行在同一个端口上的所有连接，我们可以通过。限制性防火墙。
 func tunnelListener(addr string, tlsConfig *tls.Config) {
 	// listen for incoming connections
 	listener, err := conn.Listen(addr, "tun", tlsConfig)
