@@ -66,6 +66,9 @@ func httpHandler(c conn.Conn, proto string) {
 	}()
 
 	// Make sure we detect dead connections while we decide how to multiplex
+	// 设置超时时间
+	//net.Conn 为Deadline提供了多个方法 Set[Read|Write]Deadline(time.Time) 。
+	// Deadline是一个绝对时间值，当到达这个时间的时候，所有的 I/O 操作都会失败，返回超时(timeout)错误。
 	c.SetDeadline(time.Now().Add(connReadTimeout))
 
 	// multiplex by extracting the Host header, the vhost library

@@ -36,10 +36,12 @@ func UnpackInto(buffer []byte, msg Message) (err error) {
 	return
 }
 
+//解包数据
 func Unpack(buffer []byte) (msg Message, err error) {
 	return unpack(buffer, nil)
 }
 
+//打包数据包
 func Pack(payload interface{}) ([]byte, error) {
 	return json.Marshal(struct {
 		Type    string

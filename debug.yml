@@ -1,0 +1,6 @@
+server_addr: ngrok.me:4443
+trust_host_root_certs: false
+tunnels:
+      test:
+        proto:
+           http: 8080

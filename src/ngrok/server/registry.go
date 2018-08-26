@@ -35,10 +35,12 @@ func NewTunnelRegistry(cacheSize uint64, cacheFile string) *TunnelRegistry {
 		Logger:   log.NewPrefixLogger("registry", "tun"),
 	}
 
+	// LruCache利用Gob编码。不幸的是，Gob是易变的，将无法编码或解码任何非原始类型，还没有“注册”它。因为我们店cacheurl对象，我们需要在这里先登记的编码/解码工作
 	// LRUCache uses Gob encoding. Unfortunately, Gob is fickle and will fail
 	// to encode or decode any non-primitive types that haven't been "registered"
 	// with it. Since we store cacheUrl objects, we need to register them here first
 	// for the encoding/decoding to work
+	// 因此我们先存储cacheUrl对象，我们要加密解密必须先在这里注册他们
 	var urlobj cacheUrl
 	gob.Register(urlobj)
 

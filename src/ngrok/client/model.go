@@ -49,7 +49,7 @@ type ClientModel struct {
 	serverAddr    string
 	proxyUrl      string
 	authToken     string
-	tlsConfig     *tls.Config
+	tlsConfig     *tls.Config //tls包的
 	tunnelConfig  map[string]*TunnelConfiguration
 	configPath    string
 }
@@ -74,7 +74,7 @@ func newClientModel(config *Configuration, ctl mvc.Controller) *ClientModel {
 		authToken: config.AuthToken,
 
 		// connection status
-		connStatus: mvc.ConnConnecting,
+		connStatus: mvc.ConnConnecting, //mvc.state const ConnConnecting
 
 		// update status
 		updateStatus: mvc.UpdateNone,
@@ -103,19 +103,25 @@ func newClientModel(config *Configuration, ctl mvc.Controller) *ClientModel {
 
 	// configure TLS
 	if config.TrustHostRootCerts {
-		m.Info("Trusting host's root certificates")
-		m.tlsConfig = &tls.Config{}
+		m.Info("Trusting host's root certificates") //因为model结构体包含了logger接口 所以可以使用 logger的Info方法
+		m.tlsConfig = &tls.Config{} //给model增加tls的Config引用
 	} else {
 		m.Info("Trusting root CAs: %v", rootCrtPaths)
 		var err error
+		//加载证书 证书的地址 tls.go 的LoadTLSConfig主要的功能是负责加载证书文件的。
 		if m.tlsConfig, err = LoadTLSConfig(rootCrtPaths); err != nil {
 			panic(err)
 		}
 	}
 
 	// configure TLS SNI
+	// 用于认证返回证书的主机名（除非设置了InsecureSkipVerify）。
+	// 也被用在客户端的握手里，以支持虚拟主机。
 	m.tlsConfig.ServerName = serverName(m.serverAddr)
-	m.tlsConfig.InsecureSkipVerify = useInsecureSkipVerify()
+	// InsecureSkipVerify控制客户端是否认证服务端的证书链和主机名。
+	// 如果InsecureSkipVerify为真，TLS连接会接受服务端提供的任何证书和该证书中的任何主机名。
+	// 此时，TLS连接容易遭受中间人攻击，这种设置只应用于测试。
+	m.tlsConfig.InsecureSkipVerify = useInsecureSkipVerify() //debug为true。
 
 	return m
 }
@@ -143,20 +149,26 @@ func (c ClientModel) GetTunnels() []mvc.Tunnel {
 	}
 	return tunnels
 }
+//mvc.ConnStatus 是位置mvc目录下state.go 文件中的 type ConnStatus int
 func (c ClientModel) GetConnStatus() mvc.ConnStatus     { return c.connStatus }
+// type UpdateStatus int 有三个常量是做为该参数的值类型
 func (c ClientModel) GetUpdateStatus() mvc.UpdateStatus { return c.updateStatus }
 
+// 从model中获取metrics中的connMeter和connTimer统计结果 metrics是统计用的
 func (c ClientModel) GetConnectionMetrics() (metrics.Meter, metrics.Timer) {
 	return c.metrics.connMeter, c.metrics.connTimer
 }
 
+//也是获取统计信息的
 func (c ClientModel) GetBytesInMetrics() (metrics.Counter, metrics.Histogram) {
 	return c.metrics.bytesInCount, c.metrics.bytesIn
 }
 
+//获取统计信息的
 func (c ClientModel) GetBytesOutMetrics() (metrics.Counter, metrics.Histogram) {
 	return c.metrics.bytesOutCount, c.metrics.bytesOut
 }
+//更新updateStatus 更新model的状态后，更新调用控制器的update方法。设置model的updateStatus后。则需要更新信息。
 func (c ClientModel) SetUpdateStatus(updateStatus mvc.UpdateStatus) {
 	c.updateStatus = updateStatus
 	c.update()
@@ -180,27 +192,29 @@ func (c *ClientModel) PlayRequest(tunnel mvc.Tunnel, payload []byte) {
 func (c *ClientModel) Shutdown() {
 }
 
+//调用控制器ctl的Update方法 参数为当前的model更新控制器状态。
 func (c *ClientModel) update() {
 	c.ctl.Update(c)
 }
 
 func (c *ClientModel) Run() {
-	// how long we should wait before we reconnect
+	// how long we should wait before we reconnect 重新连接之前应该等多久
 	maxWait := 30 * time.Second
 	wait := 1 * time.Second
 
 	for {
-		// run the control channel
+		// run the control channel 运行控制通道
 		c.control()
 
 		// control only returns when a failure has occurred, so we're going to try to reconnect
+		// 控制仅在发生故障时返回，因此我们将尝试重新连接
 		if c.connStatus == mvc.ConnOnline {
 			wait = 1 * time.Second
 		}
 
 		log.Info("Waiting %d seconds before reconnecting", int(wait.Seconds()))
 		time.Sleep(wait)
-		// exponentially increase wait time
+		// exponentially increase wait time 指数增加等待时间 连接失败后，重试的时间会不断增加。
 		wait = 2 * wait
 		wait = time.Duration(math.Min(float64(wait), float64(maxWait)))
 		c.connStatus = mvc.ConnReconnecting
@@ -209,6 +223,7 @@ func (c *ClientModel) Run() {
 }
 
 // Establishes and manages a tunnel control connection with the server
+// 建立和管理与服务器的隧道控制连接
 func (c *ClientModel) control() {
 	defer func() {
 		if r := recover(); r != nil {
@@ -216,15 +231,18 @@ func (c *ClientModel) control() {
 		}
 	}()
 
-	// establish control channel
+	// establish control channel 建立控制渠道
+	// var () 批量定义变量，则不用在每个前面写var
 	var (
 		ctlConn conn.Conn
 		err     error
 	)
 	if c.proxyUrl == "" {
-		// simple non-proxied case, just connect to the server
+		// simple non-proxied case, just connect to the server 简单的非代理情况，只需连接到服务器即可
+		// conn.Dial conn自定义的客户端。
 		ctlConn, err = conn.Dial(c.serverAddr, "ctl", c.tlsConfig)
 	} else {
+		//http proxy
 		ctlConn, err = conn.DialHttpProxy(c.proxyUrl, c.serverAddr, "ctl", c.tlsConfig)
 	}
 	if err != nil {
@@ -233,6 +251,7 @@ func (c *ClientModel) control() {
 	defer ctlConn.Close()
 
 	// authenticate with the server
+	// msg 是 msg包中的msg.go 组织了Auth格式的数组结构
 	auth := &msg.Auth{
 		ClientId:  c.id,
 		OS:        runtime.GOOS,
@@ -242,32 +261,37 @@ func (c *ClientModel) control() {
 		User:      c.authToken,
 	}
 
+	//把组织好的auth数据通过ctlConn写入缓冲区
 	if err = msg.WriteMsg(ctlConn, auth); err != nil {
 		panic(err)
 	}
 
 	// wait for the server to authenticate us
+	// 等待服务器验证我们
 	var authResp msg.AuthResp
 	if err = msg.ReadMsgInto(ctlConn, &authResp); err != nil {
 		panic(err)
 	}
 
+	// 如果验证有错，则关掉控制器
 	if authResp.Error != "" {
 		emsg := fmt.Sprintf("Failed to authenticate to server: %s", authResp.Error)
 		c.ctl.Shutdown(emsg)
 		return
 	}
 
-	c.id = authResp.ClientId
-	c.serverVersion = authResp.MmVersion
-	c.Info("Authenticated with server, client id: %v", c.id)
-	c.update()
+	c.id = authResp.ClientId //服务端返回唯一的客户端id
+	c.serverVersion = authResp.MmVersion //返回服务器的版本信息。
+	c.Info("Authenticated with server, client id: %v", c.id) //打印clientID
+	c.update() //更新model及controller
+	//保存authToken
 	if err = SaveAuthToken(c.configPath, c.authToken); err != nil {
 		c.Error("Failed to save auth token: %v", err)
 	}
 
-	// request tunnels
+	// request tunnels 请求隧道
 	reqIdToTunnelConfig := make(map[string]*TunnelConfiguration)
+	//遍历隧道配置，解析每个隧道配置信息, 并发送隧道请求。
 	for _, config := range c.tunnelConfig {
 		// create the protocol list to ask for
 		var protocols []string
@@ -284,17 +308,18 @@ func (c *ClientModel) control() {
 			RemotePort: config.RemotePort,
 		}
 
-		// send the tunnel request
+		// send the tunnel request 发送隧道请求
 		if err = msg.WriteMsg(ctlConn, reqTunnel); err != nil {
 			panic(err)
 		}
 
 		// save request id association so we know which local address
 		// to proxy to later
+		// 保存请求ID关联，以便我们知道以后代理哪个本地地址
 		reqIdToTunnelConfig[reqTunnel.ReqId] = config
 	}
 
-	// start the heartbeat
+	// start the heartbeat 开始心跳
 	lastPong := time.Now().UnixNano()
 	c.ctl.Go(func() { c.heartbeat(&lastPong, ctlConn) })
 

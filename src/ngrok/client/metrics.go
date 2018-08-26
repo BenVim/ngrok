@@ -4,6 +4,7 @@ import (
 	metrics "github.com/rcrowley/go-metrics"
 )
 
+//做监控、做统计 metrics
 const (
 	sampleSize  int     = 1028
 	sampleAlpha float64 = 0.015

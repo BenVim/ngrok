@@ -52,7 +52,7 @@ func LoadConfiguration(opts *Options) (config *Configuration, err error) {
 	}
 
 	// deserialize/parse the config
-	config = new(Configuration)
+	config = new(Configuration) //相当于 :=
 	if err = yaml.Unmarshal(configBuf, &config); err != nil {
 		err = fmt.Errorf("Error parsing configuration file %s: %v", configPath, err)
 		return

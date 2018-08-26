@@ -40,10 +40,10 @@ func Main() {
 		os.Exit(1)
 	}
 
-	// seed random number generator
+	// seed random number generator 种子随机数发生器
 	seed, err := util.RandomSeed()
 	if err != nil {
-		fmt.Printf("Couldn't securely seed the random number generator!")
+		fmt.Printf("Couldn't securely seed the random number generator!") //无法安全地播种随机数发生器！
 		os.Exit(1)
 	}
 	rand.Seed(seed)

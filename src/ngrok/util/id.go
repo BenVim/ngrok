@@ -12,7 +12,7 @@ func RandomSeed() (seed int64, err error) {
 	return
 }
 
-// creates a random identifier of the specified length
+// creates a random identifier of the specified length 创建指定长度的随机标识符
 func RandId(idlen int) string {
 	b := make([]byte, idlen)
 	var randVal uint32

@@ -114,7 +114,8 @@ func Main() {
 	rand.Seed(seed)
 
 	// init tunnel/control registry
-	registryCacheFile := os.Getenv("REGISTRY_CACHE_FILE")
+	registryCacheFile := os.Getenv("REGISTRY_CACHE_FILE") //获取环境变量
+	print(registryCacheFile)
 	tunnelRegistry = NewTunnelRegistry(registryCacheSize, registryCacheFile)
 	controlRegistry = NewControlRegistry()
 

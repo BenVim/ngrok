@@ -14,15 +14,15 @@ import (
 type command interface{}
 
 type cmdQuit struct {
-	// display this message after quit
+	// display this message after quit 退出后显示此消息
 	message string
 }
 
 type cmdPlayRequest struct {
-	// the tunnel to play this request over
+	// the tunnel to play this request over 隧道发出这个请求
 	tunnel mvc.Tunnel
 
-	// the bytes of the request to issue
+	// the bytes of the request to issue 要发出的请求的字节数
 	payload []byte
 }
 
@@ -31,7 +31,7 @@ type Controller struct {
 	// Controller logger
 	log.Logger
 
-	// the model sends updates through this broadcast channel
+	// the model sends updates through this broadcast channel 模型通过此广播频道发送更新
 	updates *util.Broadcast
 
 	// the model
@@ -40,10 +40,10 @@ type Controller struct {
 	// the views
 	views []mvc.View
 
-	// internal structure to issue commands to the controller
+	// internal structure to issue commands to the controller 向控制器发出命令的内部结构
 	cmds chan command
 
-	// internal structure to synchronize access to State object
+	// internal structure to synchronize access to State object 用于同步对State对象的访问的内部结构
 	state chan mvc.State
 
 	// options
@@ -203,7 +203,7 @@ func (ctl *Controller) Run(config *Configuration) {
 				}()
 
 			case cmdPlayRequest:
-				ctl.Go(func() { ctl.model.PlayRequest(cmd.tunnel, cmd.payload) })
+				ctl.Go(func() { ctl.model.PlayRequest(cmd.tunnel, cmd.payload) }) //发起请求。model 创建连接。
 			}
 
 		case obj := <-updates:

@@ -36,10 +36,12 @@ type Listener struct {
 	Conns chan *loggedConn
 }
 
+//返回loggedConn
 func wrapConn(conn net.Conn, typ string) *loggedConn {
+	//conn.(type) 类型断言，即 conn的类型
 	switch c := conn.(type) {
 	case *vhost.HTTPConn:
-		wrapped := c.Conn.(*loggedConn)
+		wrapped := c.Conn.(*loggedConn) //如果 conn 的类型是vhost.HTTPConn 则直接从对象中获取loggedConn
 		return &loggedConn{wrapped.tcp, conn, wrapped.Logger, wrapped.id, wrapped.typ}
 	case *loggedConn:
 		return c

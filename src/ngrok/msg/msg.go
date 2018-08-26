@@ -31,6 +31,7 @@ type Envelope struct {
 
 // When a client opens a new control channel to the server
 // it must start by sending an Auth message.
+// 当客户端向服务器打开新的控制通道时，它必须通过发送Auth消息开始。
 type Auth struct {
 	Version   string // protocol version
 	MmVersion string // major/minor software version (informational only)
@@ -43,14 +44,16 @@ type Auth struct {
 
 // A server responds to an Auth message with an
 // AuthResp message over the control channel.
-//
+// 服务器通过控制通道响应带有AuthResp消息的Auth消息。
 // If Error is not the empty string
 // the server has indicated it will not accept
 // the new session and will close the connection.
-//
-// The server response includes a unique ClientId
+// 如果Error不为空，则服务器已指示它不接受新会话并将关闭连接。
+
+// The server response includes a unique ClientId 服务器响应包括唯一的ClientID
 // that is used to associate and authenticate future
 // proxy connections via the same field in RegProxy messages.
+// 用于通过RegProxy消息中的相同字段关联和验证将来的代理连接。
 type AuthResp struct {
 	Version   string
 	MmVersion string
