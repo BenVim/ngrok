@@ -21,11 +21,12 @@ func (url cacheUrl) Size() int {
 }
 
 // TunnelRegistry maps a tunnel URL to Tunnel structures
+// TunnelRegistry将隧道URL映射到隧道结构
 type TunnelRegistry struct {
-	tunnels  map[string]*Tunnel
-	affinity *cache.LRUCache
+	tunnels  map[string]*Tunnel //隧道记录
+	affinity *cache.LRUCache //
 	log.Logger
-	sync.RWMutex
+	sync.RWMutex //RWMutex(读写锁)
 }
 
 func NewTunnelRegistry(cacheSize uint64, cacheFile string) *TunnelRegistry {
@@ -130,6 +131,10 @@ func (r *TunnelRegistry) RegisterAndCache(url string, t *Tunnel) (err error) {
 // Register a tunnel with the following process:
 // Consult the affinity cache to try to assign a previously used tunnel url if possible
 // Generate new urls repeatedly with the urlFn and register until one is available.
+// 使用以下过程注册隧道:
+// Consult 亲和缓存尝试分配以前使用的隧道 url, 如果 possible
+// Generate 新的 url 重复使用 urlFn 和注册, 直到一个可用
+// !!! 使用一个随机数注册，如果该随机数已被占用，再重新换一个随机数再试，最多试5次。
 func (r *TunnelRegistry) RegisterRepeat(urlFn func() string, t *Tunnel) (string, error) {
 	url := r.GetCachedRegistration(t)
 	if url == "" {

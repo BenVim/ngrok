@@ -50,6 +50,7 @@ type Tunnel struct {
 }
 
 // Common functionality for registering virtually hosted protocols
+// 注册几乎托管协议的通用功能
 func registerVhost(t *Tunnel, protocol string, servingPort int) (err error) {
 	vhost := os.Getenv("VHOST")
 	if vhost == "" {
@@ -57,27 +58,32 @@ func registerVhost(t *Tunnel, protocol string, servingPort int) (err error) {
 	}
 
 	// Canonicalize virtual host by removing default port (e.g. :80 on HTTP)
+	// 规范化虚拟主机通过删除默认端口 (例如: HTTP 上的 80)
+	// defaultPortMap 类似枚举 根据protocol获取端口号。
 	defaultPort, ok := defaultPortMap[protocol]
 	if !ok {
 		return fmt.Errorf("Couldn't find default port for protocol %s", protocol)
 	}
 
-	defaultPortSuffix := fmt.Sprintf(":%d", defaultPort)
+	defaultPortSuffix := fmt.Sprintf(":%d", defaultPort) //给端口增加一个：前缀
+	//strings.HasSuffix 判断字符串vhost是否以defaultPortSuffix结尾。
 	if strings.HasSuffix(vhost, defaultPortSuffix) {
-		vhost = vhost[0 : len(vhost)-len(defaultPortSuffix)]
+		vhost = vhost[0 : len(vhost)-len(defaultPortSuffix)] //取出host段
 	}
 
 	// Canonicalize by always using lower-case
-	vhost = strings.ToLower(vhost)
+	// 规范化总是使用小写
+	vhost = strings.ToLower(vhost) //全部变小写
 
-	// Register for specific hostname
+	// Register for specific(特定) hostname
+	// 注册特定主机名
 	hostname := strings.ToLower(strings.TrimSpace(t.req.Hostname))
 	if hostname != "" {
 		t.url = fmt.Sprintf("%s://%s", protocol, hostname)
 		return tunnelRegistry.Register(t.url, t)
 	}
 
-	// Register for specific subdomain
+	// Register for specific(特定) subdomain
 	subdomain := strings.ToLower(strings.TrimSpace(t.req.Subdomain))
 	if subdomain != "" {
 		t.url = fmt.Sprintf("%s://%s.%s", protocol, subdomain, vhost)
@@ -115,15 +121,17 @@ func NewTunnel(m *msg.ReqTunnel, ctl *Control) (t *Tunnel, err error) {
 			addr := t.listener.Addr().(*net.TCPAddr)
 			t.url = fmt.Sprintf("tcp://%s:%d", opts.domain, addr.Port)
 
-			// register it
+			// register it 注册隧道
 			if err = tunnelRegistry.RegisterAndCache(t.url, t); err != nil {
 				// This should never be possible because the OS will
 				// only assign available ports to us.
+				// 这不应该是可能的, 因为 OS 将只分配可用的端口给我们。
 				t.listener.Close()
 				err = fmt.Errorf("TCP listener bound, but failed to register %s", t.url)
 				return err
 			}
 
+			//创建和tcp服务 使用go方法去阻塞监听client的连接，并处理。
 			go t.listenTcp(t.listener)
 			return nil
 		}
@@ -265,7 +273,7 @@ func (t *Tunnel) HandlePublicConnection(publicConn conn.Conn) {
 		t.Info("Got proxy connection %s", proxyConn.Id())
 		proxyConn.AddLogPrefix(t.Id())
 
-		// tell the client we're going to start using this proxy connection
+		// tell the client we're going to start using this proxy connection 告诉客户端我们将开始使用此代理连接
 		startPxyMsg := &msg.StartProxy{
 			Url:        t.url,
 			ClientAddr: publicConn.RemoteAddr().String(),
@@ -288,12 +296,13 @@ func (t *Tunnel) HandlePublicConnection(publicConn conn.Conn) {
 
 	// To reduce latency handling tunnel connections, we employ the following curde heuristic:
 	// Whenever we take a proxy connection from the pool, replace it with a new one
+	// 为了减少延迟处理隧道连接, 我们使用以下原油启发式: 每当我们从池中取一个代理连接时, 用一个新的替换它
 	util.PanicToError(func() { t.ctl.out <- &msg.ReqProxy{} })
 
-	// no timeouts while connections are joined
+	// no timeouts while connections are joined 连接联接时没有超时
 	proxyConn.SetDeadline(time.Time{})
 
-	// join the public and proxy connections
+	// join the public and proxy connections 加入公共和代理连接
 	bytesIn, bytesOut := conn.Join(publicConn, proxyConn)
 	metrics.CloseConnection(t, publicConn, startTime, bytesIn, bytesOut)
 }

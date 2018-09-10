@@ -363,6 +363,7 @@ func (c *ClientModel) control() {
 }
 
 // Establishes and manages a tunnel proxy connection with the server
+// 建立和管理与服务器的隧道代理连接
 func (c *ClientModel) proxy() {
 	var (
 		remoteConn conn.Conn
@@ -381,6 +382,7 @@ func (c *ClientModel) proxy() {
 	}
 	defer remoteConn.Close()
 
+	// 给服务器发送个注册clientId参数
 	err = msg.WriteMsg(remoteConn, &msg.RegProxy{ClientId: c.id})
 	if err != nil {
 		remoteConn.Error("Failed to write RegProxy: %v", err)
@@ -388,6 +390,7 @@ func (c *ClientModel) proxy() {
 	}
 
 	// wait for the server to ack our register
+	// 等待服务器确认我们的注册
 	var startPxy msg.StartProxy
 	if err = msg.ReadMsgInto(remoteConn, &startPxy); err != nil {
 		remoteConn.Error("Server failed to write StartProxy: %v", err)
@@ -401,6 +404,7 @@ func (c *ClientModel) proxy() {
 	}
 
 	// start up the private connection
+	// 启动私人连接
 	start := time.Now()
 	localConn, err := conn.Dial(tunnel.LocalAddr, "prv", nil)
 	if err != nil {
@@ -408,6 +412,7 @@ func (c *ClientModel) proxy() {
 
 		if tunnel.Protocol.GetName() == "http" {
 			// try to be helpful when you're in HTTP mode and a human might see the output
+			// 当你处于HTTP模式并且人类可能看到输出时，尝试提供帮助
 			badGatewayBody := fmt.Sprintf(BadGateway, tunnel.PublicUrl, tunnel.LocalAddr, tunnel.LocalAddr)
 			remoteConn.Write([]byte(fmt.Sprintf(`HTTP/1.0 502 Bad Gateway
 Content-Type: text/html
@@ -419,7 +424,7 @@ Content-Length: %d
 	}
 	defer localConn.Close()
 
-	m := c.metrics
+	m := c.metrics //统计信息
 	m.proxySetupTimer.Update(time.Since(start))
 	m.connMeter.Mark(1)
 	c.update()
@@ -435,6 +440,7 @@ Content-Length: %d
 }
 
 // Hearbeating to ensure our connection ngrokd is still live
+// 为了确保我们的连接，ngrokd仍在继续接听
 func (c *ClientModel) heartbeat(lastPongAddr *int64, conn conn.Conn) {
 	lastPing := time.Unix(atomic.LoadInt64(lastPongAddr)-1, 0)
 	ping := time.NewTicker(pingInterval)
