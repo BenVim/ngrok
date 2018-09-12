@@ -77,6 +77,7 @@ func NewControl(ctlConn conn.Conn, authMsg *msg.Auth) {
 		shutdown:        util.NewShutdown(),
 	}
 
+	//错误处理函数
 	failAuth := func(e error) {
 		_ = msg.WriteMsg(ctlConn, &msg.AuthResp{Error: e.Error()})
 		ctlConn.Close()
@@ -107,6 +108,7 @@ func NewControl(ctlConn conn.Conn, authMsg *msg.Auth) {
 	}
 
 	// start the writer first so that the following messages get sent
+	// 首先启动编写器，以便发送以下消息
 	go c.writer()
 
 	// Respond to authentication
@@ -117,6 +119,7 @@ func NewControl(ctlConn conn.Conn, authMsg *msg.Auth) {
 	}
 
 	// As a performance optimization, ask for a proxy connection up front
+	// 作为性能优化，请事先询问代理连接
 	c.out <- &msg.ReqProxy{}
 
 	// manage the connection
@@ -209,12 +212,15 @@ func (c *Control) writer() {
 	}()
 
 	// kill everything if the writer() stops
+	// 如果writer（）停止，则杀死所有内容
 	defer c.shutdown.Begin()
 
 	// notify that we've flushed all messages
+	// 通知我们已刷新所有消息
 	defer c.writerShutdown.Complete()
 
 	// write messages to the control channel
+	// 把c.out的数据全部发送出去，如果没有了，则阻塞，等待发送数据。
 	for m := range c.out {
 		c.conn.SetWriteDeadline(time.Now().Add(controlWriteTimeout))
 		if err := msg.WriteMsg(c.conn, m); err != nil {

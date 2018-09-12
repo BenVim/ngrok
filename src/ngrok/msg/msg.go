@@ -65,6 +65,11 @@ type AuthResp struct {
 // to request a new tunnel be opened on the client's behalf.
 // ReqId is a random number set by the client that it can pull
 // from future NewTunnel's to correlate then to the requesting ReqTunnel.
+// 客户端通过控制通道将此消息发送到服务器
+// 请求代表客户端打开新隧道。
+// ReqId是客户端可以提取的随机数
+// 从未来的NewTunnel到然后与请求的ReqTunnel相关联。
+// !!!客户端通过控制通道发送该消息到服务端请求打开新的隧道
 type ReqTunnel struct {
 	ReqId    string
 	Protocol string
@@ -85,6 +90,12 @@ type ReqTunnel struct {
 // A client may receive *multiple* NewTunnel messages from a single
 // ReqTunnel. (ex. A client opens an https tunnel and the server
 // chooses to open an http tunnel of the same name as well)
+// 当服务器代表打开新隧道时
+// 客户端，它发送NewTunnel消息以通知客户端。
+// ReqId是来自相应ReqTunnel消息的ReqId。
+// 客户端可能会收到来自单个的* multiple * NewTunnel消息
+// ReqTunnel。 （例如，客户端打开https隧道和服务器
+//选择打开同名的http隧道）
 type NewTunnel struct {
 	ReqId    string
 	Url      string
@@ -95,17 +106,23 @@ type NewTunnel struct {
 // When the server wants to initiate a new tunneled connection, it sends
 // this message over the control channel to the client. When a client receives
 // this message, it must initiate a new proxy connection to the server.
+// 当服务器想要发起新的隧道连接时，它会发送
+// 通过控制通道向客户端发送此消息。 当客户收到
+// 此消息，它必须启动到服务器的新代理连接。
 type ReqProxy struct {
 }
 
 // After a client receives a ReqProxy message, it opens a new
 // connection to the server and sends a RegProxy message.
+// 客户端收到 ReqProxy 消息后, 它会打开与服务器的 new 连接, 并发送 RegProxy 消息。
+
 type RegProxy struct {
 	ClientId string
 }
 
 // This message is sent by the server to the client over a *proxy* connection before it
 // begins to send the bytes of the proxied request.
+// 此消息由服务器通过 * 代理 * 连接发送到客户端, 然后才开始发送代理请求的字节。
 type StartProxy struct {
 	Url        string // URL of the tunnel this connection connection is being proxied for
 	ClientAddr string // Network address of the client initiating the connection to the tunnel
@@ -114,10 +131,12 @@ type StartProxy struct {
 // A client or server may send this message periodically over
 // the control channel to request that the remote side acknowledge
 // its connection is still alive. The remote side must respond with a Pong.
+// 客户端或服务器可以定期在控制通道上发送此消息, 以请求远程方确认其连接仍然存在。远程方必须用乒乓球来回应。
 type Ping struct {
 }
 
 // Sent by a client or server over the control channel to indicate
 // it received a Ping.
+// 由客户端或服务器通过控制通道发送, 以指示接收到 Ping。
 type Pong struct {
 }

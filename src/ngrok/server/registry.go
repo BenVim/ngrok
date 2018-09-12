@@ -193,6 +193,7 @@ func (r *ControlRegistry) Add(clientId string, ctl *Control) (oldCtl *Control) {
 	r.Lock()
 	defer r.Unlock()
 
+	//如果控制器已存在，则用新的替换原来的
 	oldCtl = r.controls[clientId]
 	if oldCtl != nil {
 		oldCtl.Replaced(ctl)

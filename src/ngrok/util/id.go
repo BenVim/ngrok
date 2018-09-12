@@ -27,6 +27,7 @@ func RandId(idlen int) string {
 }
 
 // like RandId, but uses a crypto/rand for secure random identifiers
+// 像RandId，但使用加密/ rand作为安全的随机标识符
 func SecureRandId(idlen int) (id string, err error) {
 	b := make([]byte, idlen)
 	n, err := rand.Read(b)
