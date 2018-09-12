@@ -29,6 +29,7 @@ type TunnelRegistry struct {
 	sync.RWMutex //RWMutex(读写锁)
 }
 
+//
 func NewTunnelRegistry(cacheSize uint64, cacheFile string) *TunnelRegistry {
 	registry := &TunnelRegistry{
 		tunnels:  make(map[string]*Tunnel),
@@ -168,6 +169,7 @@ func (r *TunnelRegistry) Get(url string) *Tunnel {
 }
 
 // ControlRegistry maps a client ID to Control structures
+// ControlRegistry 映射客户端 ID 以控制结构
 type ControlRegistry struct {
 	controls map[string]*Control
 	log.Logger

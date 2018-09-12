@@ -54,6 +54,7 @@ func wrapConn(conn net.Conn, typ string) *loggedConn {
 	return nil
 }
 
+// !!! 创建Listen服务，每个接入的连接都包装成loggedConn，保存到Listener的对象l中的Conns通道中。
 func Listen(addr, typ string, tlsCfg *tls.Config) (l *Listener, err error) {
 	// listen for incoming connections
 	listener, err := net.Listen("tcp", addr)
@@ -70,7 +71,7 @@ func Listen(addr, typ string, tlsCfg *tls.Config) (l *Listener, err error) {
 		for {
 			rawConn, err := listener.Accept()
 			if err != nil {
-				log.Error("Failed to accept new TCP connection of type %s: %v", typ, err)
+				log.Error("Filed to accept new TCP connection of type %s: %v", typ, err)
 				continue
 			}
 

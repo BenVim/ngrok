@@ -64,6 +64,9 @@ func tunnelListener(addr string, tlsConfig *tls.Config) {
 	}
 
 	log.Info("Listening for control and proxy connections on %s", listener.Addr.String())
+
+	//遍历Listener
+	//!!! 接收管道的用户连接。并处理连接的消息。
 	for c := range listener.Conns {
 		go func(tunnelConn conn.Conn) {
 			// don't crash on panics
@@ -129,6 +132,7 @@ func Main() {
 	}
 
 	// listen for http
+	//!!! http和https隧道的创建的方法保存到listeners字典中。
 	if opts.httpAddr != "" {
 		listeners["http"] = startHttpListener(opts.httpAddr, nil)
 	}
