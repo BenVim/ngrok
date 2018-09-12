@@ -129,6 +129,7 @@ func NewControl(ctlConn conn.Conn, authMsg *msg.Auth) {
 }
 
 // Register a new tunnel on this control connection
+// 在此控件连接上注册新隧道
 func (c *Control) registerTunnel(rawTunnelReq *msg.ReqTunnel) {
 	for _, proto := range strings.Split(rawTunnelReq.Protocol, "+") {
 		tunnelReq := *rawTunnelReq
@@ -186,6 +187,7 @@ func (c *Control) manager() {
 				c.shutdown.Begin()
 			}
 
+			// 对接收到的消息进行分类处理
 		case mRaw, ok := <-c.in:
 			// c.in closes to indicate shutdown
 			if !ok {
@@ -193,6 +195,7 @@ func (c *Control) manager() {
 			}
 
 			switch m := mRaw.(type) {
+			// !!!客户端通过控制通道发送该消息到服务端请求打开新的隧道
 			case *msg.ReqTunnel:
 				c.registerTunnel(m)
 
