@@ -143,6 +143,7 @@ func NewTunnel(m *msg.ReqTunnel, ctl *Control) (t *Tunnel, err error) {
 		}
 
 		// try to return to you the same port you had before
+		// TODO 端口不能随机分配，必须要从配置表中获取。
 		cachedUrl := tunnelRegistry.GetCachedRegistration(t)
 		if cachedUrl != "" {
 			var port int

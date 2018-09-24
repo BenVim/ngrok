@@ -83,7 +83,7 @@ func NewControl(ctlConn conn.Conn, authMsg *msg.Auth) {
 		ctlConn.Close()
 	}
 
-	// register the clientid
+	// register the clientid !!!检查客户端的id 如果不存在就重新生成，生成失败，则返回
 	c.id = authMsg.ClientId
 	if c.id == "" {
 		// it's a new session, assign an ID
@@ -97,12 +97,16 @@ func NewControl(ctlConn conn.Conn, authMsg *msg.Auth) {
 	ctlConn.SetType("ctl")
 	ctlConn.AddLogPrefix(c.id)
 
+	//!!!版本不一致，则返回
 	if authMsg.Version != version.Proto {
 		failAuth(fmt.Errorf("Incompatible versions. Server %s, client %s. Download a new version at http://ngrok.com", version.MajorMinor(), authMsg.Version))
 		return
 	}
 
-	// register the control
+	//检查token是否存在，
+	//todo 验证TOKEN是否存在，如果存在，获取其数据。发送给客户端，客户端使用该数据发起隧道创建请求。
+
+	// register the control !!! 注册当前客户端与服务端建立的控制连接。
 	if replaced := controlRegistry.Add(c.id, c); replaced != nil {
 		replaced.shutdown.WaitComplete()
 	}
@@ -112,6 +116,8 @@ func NewControl(ctlConn conn.Conn, authMsg *msg.Auth) {
 	go c.writer()
 
 	// Respond to authentication
+
+	//TODO 返回隧道的配值给客户端。
 	c.out <- &msg.AuthResp{
 		Version:   version.Proto,
 		MmVersion: version.MajorMinor(),
@@ -129,7 +135,7 @@ func NewControl(ctlConn conn.Conn, authMsg *msg.Auth) {
 }
 
 // Register a new tunnel on this control connection
-// 在此控件连接上注册新隧道
+// 在此控制器上注册新隧道
 func (c *Control) registerTunnel(rawTunnelReq *msg.ReqTunnel) {
 	for _, proto := range strings.Split(rawTunnelReq.Protocol, "+") {
 		tunnelReq := *rawTunnelReq
@@ -151,6 +157,7 @@ func (c *Control) registerTunnel(rawTunnelReq *msg.ReqTunnel) {
 		c.tunnels = append(c.tunnels, t)
 
 		// acknowledge success
+		//TODO 通知客户端新的隧道注册成功。
 		c.out <- &msg.NewTunnel{
 			Url:      t.url,
 			Protocol: proto,
@@ -195,7 +202,7 @@ func (c *Control) manager() {
 			}
 
 			switch m := mRaw.(type) {
-			// !!!客户端通过控制通道发送该消息到服务端请求打开新的隧道
+			//TODO !!!客户端通过控制通道发送该消息到服务端请求打开新的隧道
 			case *msg.ReqTunnel:
 				c.registerTunnel(m)
 
@@ -247,7 +254,7 @@ func (c *Control) reader() {
 
 	// read messages from the control channel
 	for {
-		if msg, err := msg.ReadMsg(c.conn); err != nil {
+		if message, err := msg.ReadMsg(c.conn); err != nil {
 			if err == io.EOF {
 				c.conn.Info("EOF")
 				return
@@ -256,7 +263,7 @@ func (c *Control) reader() {
 			}
 		} else {
 			// this can also panic during shutdown
-			c.in <- msg
+			c.in <- message
 		}
 	}
 }
@@ -318,10 +325,13 @@ func (c *Control) RegisterProxy(conn conn.Conn) {
 // and wait until it is available
 // Returns an error if we couldn't get a proxy because it took too long
 // or the tunnel is closing
+// 从池中移除代理连接, 如果没有代理连接在池中, 请请求一个并等到它可用时返回一个错误, 如果无法获取代理, 因为它花费太长或隧道关闭
+
 func (c *Control) GetProxy() (proxyConn conn.Conn, err error) {
 	var ok bool
 
 	// get a proxy connection from the pool
+	// 从池中获取代理连接
 	select {
 	case proxyConn, ok = <-c.proxies:
 		if !ok {
@@ -330,6 +340,7 @@ func (c *Control) GetProxy() (proxyConn conn.Conn, err error) {
 		}
 	default:
 		// no proxy available in the pool, ask for one over the control channel
+		// 池中没有可用的代理, 请在控制通道上选择一个
 		c.conn.Debug("No proxy in pool, requesting proxy from control . . .")
 		if err = util.PanicToError(func() { c.out <- &msg.ReqProxy{} }); err != nil {
 			return

@@ -290,15 +290,17 @@ func (c *ClientModel) control() {
 	}
 
 	// request tunnels 请求隧道
+	//TODO 隧道配置信息由服务端返回。返回的是所有的隧道数据。用户可以通过服务端关闭某个隧道。关闭的隧道不返回。
 	reqIdToTunnelConfig := make(map[string]*TunnelConfiguration)
 	//遍历隧道配置，解析每个隧道配置信息, 并发送隧道请求。
 	for _, config := range c.tunnelConfig {
 		// create the protocol list to ask for
 		var protocols []string
-		for proto, _ := range config.Protocols {
-			protocols = append(protocols, proto)
+		for protocol, _ := range config.Protocols {
+			protocols = append(protocols, protocol)
 		}
 
+		//TODO 给服务器发送创建隧道的请求 , 多隧道发送给服务端去创建。
 		reqTunnel := &msg.ReqTunnel{
 			ReqId:      util.RandId(8),
 			Protocol:   strings.Join(protocols, "+"),
@@ -332,7 +334,7 @@ func (c *ClientModel) control() {
 
 		switch m := rawMsg.(type) {
 		case *msg.ReqProxy:
-			c.ctl.Go(c.proxy)
+			c.ctl.Go(c.proxy) //TODO 服务端请求建立proxy连接 ReqProxy 使用控制器的go方法执行 model模块的proxy方法。
 
 		case *msg.Pong:
 			atomic.StoreInt64(&lastPong, time.Now().UnixNano())
@@ -370,6 +372,8 @@ func (c *ClientModel) proxy() {
 		err        error
 	)
 
+
+	//重新建立一写client与服务端之间的代理连接。
 	if c.proxyUrl == "" {
 		remoteConn, err = conn.Dial(c.serverAddr, "pxy", c.tlsConfig)
 	} else {
@@ -382,7 +386,8 @@ func (c *ClientModel) proxy() {
 	}
 	defer remoteConn.Close()
 
-	// 给服务器发送个注册clientId参数
+	// 给服务器发送个注册clientId参数 ,创建好代理连接后，需要注册
+	// TODO 注册proxy连接
 	err = msg.WriteMsg(remoteConn, &msg.RegProxy{ClientId: c.id})
 	if err != nil {
 		remoteConn.Error("Failed to write RegProxy: %v", err)
@@ -391,12 +396,14 @@ func (c *ClientModel) proxy() {
 
 	// wait for the server to ack our register
 	// 等待服务器确认我们的注册
+	// !!! 注册成功后
 	var startPxy msg.StartProxy
 	if err = msg.ReadMsgInto(remoteConn, &startPxy); err != nil {
 		remoteConn.Error("Server failed to write StartProxy: %v", err)
 		return
 	}
 
+	//TODO 根据startPxy.Url获取私人连接的信息。
 	tunnel, ok := c.tunnels[startPxy.Url]
 	if !ok {
 		remoteConn.Error("Couldn't find tunnel for proxy: %s", startPxy.Url)
@@ -415,14 +422,16 @@ func (c *ClientModel) proxy() {
 			// 当你处于HTTP模式并且人类可能看到输出时，尝试提供帮助
 			badGatewayBody := fmt.Sprintf(BadGateway, tunnel.PublicUrl, tunnel.LocalAddr, tunnel.LocalAddr)
 			remoteConn.Write([]byte(fmt.Sprintf(`HTTP/1.0 502 Bad Gateway
-Content-Type: text/html
-Content-Length: %d
+												Content-Type: text/html
+												Content-Length: %d
 
-%s`, len(badGatewayBody), badGatewayBody)))
+												%s`, len(badGatewayBody), badGatewayBody)))
 		}
 		return
 	}
 	defer localConn.Close()
+
+	//客户端访问本地服务成功后，使用conn.join实现双向通信。
 
 	m := c.metrics //统计信息
 	m.proxySetupTimer.Update(time.Since(start))
