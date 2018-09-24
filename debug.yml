@@ -1,5 +1,6 @@
 server_addr: ngrok.me:4443
 trust_host_root_certs: false
+auth_token: 10e5d4fe2a951ff76f2cfff2eb5de5c5
 tunnels:
       test:
         proto:

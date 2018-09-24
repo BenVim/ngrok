@@ -25,6 +25,7 @@ var (
 	// XXX: kill these global variables - they're only used in tunnel.go for constructing forwarding URLs
 	opts      *Options
 	listeners map[string]*conn.Listener
+	mysqlDBObj   *MysqlObj
 )
 
 func NewProxy(pxyConn conn.Conn, regPxy *msg.RegProxy) {
@@ -121,6 +122,12 @@ func Main() {
 	print(registryCacheFile)
 	tunnelRegistry = NewTunnelRegistry(registryCacheSize, registryCacheFile)
 	controlRegistry = NewControlRegistry()
+	mysqlDBObj, err = NewMysqlDB()
+
+	if err!=nil {
+		log.Error("mysql connection fail!!!")
+		return
+	}
 
 	// start listeners
 	listeners = make(map[string]*conn.Listener)

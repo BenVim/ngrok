@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"ngrok/conn"
+	"ngrok/log"
 	"ngrok/msg"
 	"ngrok/util"
 	"ngrok/version"
@@ -83,7 +84,7 @@ func NewControl(ctlConn conn.Conn, authMsg *msg.Auth) {
 		ctlConn.Close()
 	}
 
-	// register the clientid !!!检查客户端的id 如果不存在就重新生成，生成失败，则返回
+	// register the clientId !!!检查客户端的id 如果不存在就重新生成，生成失败，则返回
 	c.id = authMsg.ClientId
 	if c.id == "" {
 		// it's a new session, assign an ID
@@ -105,6 +106,23 @@ func NewControl(ctlConn conn.Conn, authMsg *msg.Auth) {
 
 	//检查token是否存在，
 	//todo 验证TOKEN是否存在，如果存在，获取其数据。发送给客户端，客户端使用该数据发起隧道创建请求。
+	log.Debug("ClientId:User: %s ", authMsg.User)
+	row, err := mysqlDBObj.QueryForRow("select uid,nickname from member where pwd=?", authMsg.User)
+	if err != nil {
+		failAuth(fmt.Errorf("auth error with token!"))
+		return
+	}
+
+	uid := 0
+	nickname := ""
+	row.Scan(&uid, &nickname)
+	log.Debug("mysqlDBObj:auth: %d %s", uid, nickname)
+
+	//token 没有通过审核
+	if uid == 0 {
+		log.Debug("auth error with Token %s", authMsg.User)
+		return
+	}
 
 	// register the control !!! 注册当前客户端与服务端建立的控制连接。
 	if replaced := controlRegistry.Add(c.id, c); replaced != nil {
@@ -114,7 +132,6 @@ func NewControl(ctlConn conn.Conn, authMsg *msg.Auth) {
 	// start the writer first so that the following messages get sent
 	// 首先启动编写器，以便发送以下消息
 	go c.writer()
-
 	// Respond to authentication
 
 	//TODO 返回隧道的配值给客户端。
@@ -278,7 +295,7 @@ func (c *Control) stopper() {
 	// wait until we're instructed to shutdown
 	c.shutdown.WaitBegin()
 
-	// remove ourself from the control registry
+	// remove ourSelf from the control registry
 	controlRegistry.Del(c.id)
 
 	// shutdown manager() so that we have no more work to do
