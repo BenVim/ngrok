@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
+	"ngrok/log"
 )
 
 type MysqlObj struct {
@@ -19,7 +20,7 @@ func NewMysqlDB() (mySqlDB *MysqlObj, err error) {
 	mySqlDB = &MysqlObj{}
 	//打开数据库
 	//DSN数据源字符串：用户名:密码@协议(地址:端口)/数据库?参数=参数值
-	db, err := sql.Open("mysql", "root:Zeruibighui!@#$1@tcp(127.0.0.1:3306)/ngrok?charset=utf8")
+	db, err := sql.Open("mysql", "root:Zeruibighui!@#$1@tcp(localhost:3306)/ngrok?charset=utf8")
 	//db, err := sql.Open("mysql", "root:Zeruibighui!@#$1@tcp(localhost:3306)/ngrok")
 	if err != nil {
 		fmt.Println("mysql", err)
@@ -42,6 +43,7 @@ func (mysqlDB *MysqlObj) Query(sqlStr string) (rows *sql.Rows, err error) {
 }
 
 func (mysqlDB *MysqlObj) QueryForRow(sqlStr string, args ...interface{}) (row *sql.Row, err error) {
+	log.Debug("QueryForRow: %s", sqlStr)
 	row = mysqlDB.db.QueryRow(sqlStr, args...)
 
 	if err != nil {
@@ -56,7 +58,7 @@ func (mysqlDB *MysqlObj) Insert(sqlStr string) (ins_id int64, err error) {
 	if err != nil {
 		return 0, err
 	}
-	ins_id, err = result.LastInsertId();
+	ins_id, err = result.LastInsertId()
 	return
 }
 
@@ -73,7 +75,7 @@ func (mysqlDB *MysqlObj) update(sqlStr string, args ...interface{}) (line int64,
 	return
 }
 
-func (mysqlDB *MysqlObj) delete(sqlStr string, args ... interface{}) (line int64, err error) {
+func (mysqlDB *MysqlObj) delete(sqlStr string, args ...interface{}) (line int64, err error) {
 	var result sql.Result
 	result, err = mysqlDB.db.Exec(sqlStr, args...)
 

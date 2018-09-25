@@ -108,15 +108,19 @@ func NewControl(ctlConn conn.Conn, authMsg *msg.Auth) {
 	//todo 验证TOKEN是否存在，如果存在，获取其数据。发送给客户端，客户端使用该数据发起隧道创建请求。
 	log.Debug("ClientId:User: %s ", authMsg.User)
 	row, err := mysqlDBObj.QueryForRow("select uid,nickname from member where pwd=?", authMsg.User)
+	//rows, err := mysqlDBObj.Query("select uid,nickname from member")
 	if err != nil {
-		failAuth(fmt.Errorf("auth error with token!"))
+		failAuth(fmt.Errorf("auth error with token! %s", err))
 		return
 	}
 
 	uid := 0
 	nickname := ""
+
+	//for rows.Next(){
 	row.Scan(&uid, &nickname)
 	log.Debug("mysqlDBObj:auth: %d %s", uid, nickname)
+	//}
 
 	//token 没有通过审核
 	if uid == 0 {
@@ -154,6 +158,9 @@ func NewControl(ctlConn conn.Conn, authMsg *msg.Auth) {
 // Register a new tunnel on this control connection
 // 在此控制器上注册新隧道
 func (c *Control) registerTunnel(rawTunnelReq *msg.ReqTunnel) {
+
+	log.Debug("create new Tunnel::::%s", rawTunnelReq)
+
 	for _, proto := range strings.Split(rawTunnelReq.Protocol, "+") {
 		tunnelReq := *rawTunnelReq
 		tunnelReq.Protocol = proto

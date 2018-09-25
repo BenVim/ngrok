@@ -2,6 +2,26 @@ server_addr: ngrok.me:4443
 trust_host_root_certs: false
 auth_token: 10e5d4fe2a951ff76f2cfff2eb5de5c5
 tunnels:
-      test:
+    test:
         proto:
-           http: 8080
+            http: 8080
+
+    ssh:
+        remote_port: 1122
+        proto:
+            tcp: 22
+
+    http:
+        subdomain: blog
+        proto:
+            http: 80
+
+    owncloud:
+        subdomain: nas
+        proto:
+            http: 8080
+
+    gitlab:
+        subdomain: gitlab
+        proto:
+            http: 90
