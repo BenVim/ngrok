@@ -9,6 +9,7 @@ import (
 	"ngrok/util"
 	"ngrok/version"
 	"runtime/debug"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -151,6 +152,7 @@ func NewControl(ctlConn conn.Conn, authMsg *msg.Auth) {
 
 	// manage the connection
 	go c.manager()
+	go c.registerTunnelOperate(uid)
 	go c.reader()
 	go c.stopper()
 }
@@ -159,7 +161,7 @@ func NewControl(ctlConn conn.Conn, authMsg *msg.Auth) {
 // 在此控制器上注册新隧道
 func (c *Control) registerTunnel(rawTunnelReq *msg.ReqTunnel) {
 
-	log.Debug("create new Tunnel::::%s", rawTunnelReq)
+	log.Debug("create new Tunnel::::%s", rawTunnelReq.Protocol)
 
 	for _, proto := range strings.Split(rawTunnelReq.Protocol, "+") {
 		tunnelReq := *rawTunnelReq
@@ -236,6 +238,61 @@ func (c *Control) manager() {
 			}
 		}
 	}
+}
+
+func (c *Control) registerTunnelOperate(uid int) {
+
+	//检查用户的数据中有多少隧道
+	rows, err := mysqlDBObj.Query(fmt.Sprintf("select * from tunnel where uid=%d", uid))
+	if err != nil {
+		log.Error("registerTunnel:", fmt.Errorf("auth error with token! %s", err))
+		return
+	}
+
+	cols, _ := rows.Columns()
+	vals := make([][]byte, len(cols))
+	scans := make([]interface{}, len(cols))
+
+	for k, _ := range vals {
+		scans[k] = &vals[k]
+	}
+
+	i := 0
+	result := make(map[int]map[string]string)
+	for rows.Next() {
+		rows.Scan(scans...)
+		row := make(map[string]string)
+		for k, v := range vals {
+			key := cols[k]
+			row[key] = string(v)
+		}
+		result[i] = row
+		i++
+	}
+	fmt.Println("result...")
+	fmt.Println(result)
+	fmt.Println("result...")
+	//组织msg.ReqTunnel消息
+
+	for r, _ := range result {
+
+		fmt.Println(r)
+		fmt.Println(result[r])
+		fmt.Println(result[r]["subdomain"])
+		res := result[r]
+		strToInt, _ := strconv.Atoi(res["remoteport"])
+		reqTunnel := &msg.ReqTunnel{
+			ReqId:      util.RandId(8),
+			Protocol:   res["protocol"],
+			Hostname:   res["hostname"],
+			Subdomain:  res["subdomain"],
+			HttpAuth:   res["http_auth"],
+			RemotePort: uint16(strToInt),
+		}
+		c.registerTunnel(reqTunnel)
+
+	}
+
 }
 
 func (c *Control) writer() {
